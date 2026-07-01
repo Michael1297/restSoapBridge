@@ -1,0 +1,42 @@
+package io.github.connellite.controller;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import io.github.connellite.model.MappingDefinition;
+import io.github.connellite.model.MappingRegistry;
+import io.github.connellite.service.BridgeService;
+import io.swagger.v3.oas.annotations.Hidden;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+
+@Hidden
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/**")
+public class BridgeController {
+
+    private final MappingRegistry mappingRegistry;
+    private final BridgeService bridgeService;
+
+    @RequestMapping
+    public ResponseEntity<JsonNode> handle(
+            HttpServletRequest request,
+            @RequestBody(required = false) JsonNode body
+    ) throws Exception {
+        MappingDefinition mapping = mappingRegistry.find(request.getMethod(), request.getRequestURI())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "No mapping for " + request.getMethod() + " " + request.getRequestURI()
+                ));
+
+        JsonNode requestBody = body != null ? body : JsonNodeFactory.instance.objectNode();
+        JsonNode responseBody = bridgeService.execute(mapping, requestBody);
+        return ResponseEntity.ok(responseBody);
+    }
+}

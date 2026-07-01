@@ -1,0 +1,27 @@
+server:
+  port: 9194
+
+bridge:
+  # manual: classpath:mappings.yml  |  auto: generate mappings from WSDL at startup
+  mappings-file: auto
+  # mappings-file: classpath:mappings.yml
+  auto:
+    services-url: http://127.0.0.1:8080/services/
+    path-prefix: /api
+    http-method: POST
+
+springdoc:
+  show-actuator: false
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    doc-expansion: none
+    display-operation-id: true
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+
+logging:
+  level:
+    io.github.connellite: DEBUG
