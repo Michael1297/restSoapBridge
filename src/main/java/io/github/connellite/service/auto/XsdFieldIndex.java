@@ -241,7 +241,7 @@ final class XsdFieldIndex {
 
     private static boolean isRepeating(XmlSchemaElement element) {
         long maxOccurs = element.getMaxOccurs();
-        return maxOccurs > 1 || maxOccurs == Long.MAX_VALUE;
+        return maxOccurs > 1;
     }
 
     private static String xsdTypeName(XmlSchemaElement element) {

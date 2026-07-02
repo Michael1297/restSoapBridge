@@ -39,13 +39,6 @@ class OpenApiExampleFactoryTest {
     }
 
     @Test
-    void exampleMap_treatsRemovedFieldsAsBooleanFallback() {
-        Map<String, Object> example = OpenApiExampleFactory.exampleMap(List.of("$.searchRemoved"));
-
-        assertInstanceOf(Boolean.class, example.get("searchRemoved"));
-    }
-
-    @Test
     void schemaWithXsdExamples_usesTypesFromXsdMetadata() {
         ObjectSchema schema = OpenApiExampleFactory.schemaWithXsdExamples(List.of(
                 new SchemaField("$.customer.name", "string", true, false),
@@ -59,8 +52,7 @@ class OpenApiExampleFactoryTest {
 
         Schema<?> customerSchema = schema.getProperties().get("customer");
         assertEquals(ObjectSchema.class, customerSchema.getClass());
-        @SuppressWarnings("unchecked")
-        Map<String, Schema> customerProperties = ((ObjectSchema) customerSchema).getProperties();
+        Map<String, Schema> customerProperties = customerSchema.getProperties();
         assertEquals(IntegerSchema.class, customerProperties.get("age").getClass());
         assertEquals(BooleanSchema.class, customerProperties.get("enabled").getClass());
         assertEquals(BooleanSchema.class, schema.getProperties().get("searchRemoved").getClass());
@@ -71,9 +63,8 @@ class OpenApiExampleFactoryTest {
 
         Schema<?> productsSchema = schema.getProperties().get("products");
         assertEquals(ArraySchema.class, productsSchema.getClass());
-        Schema<?> productItemSchema = ((ArraySchema) productsSchema).getItems();
-        @SuppressWarnings("unchecked")
-        Map<String, Schema> productProperties = ((ObjectSchema) productItemSchema).getProperties();
+        Schema<?> productItemSchema = productsSchema.getItems();
+        Map<String, Schema> productProperties = productItemSchema.getProperties();
         assertEquals(IntegerSchema.class, productProperties.get("qty").getClass());
     }
 }

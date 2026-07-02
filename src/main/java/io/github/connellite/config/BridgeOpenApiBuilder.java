@@ -48,8 +48,8 @@ public class BridgeOpenApiBuilder {
             String service = mapping.getSoap().getService();
             tagNames.add(service);
 
-            String requestSchemaName = schemaName(mapping, "Request");
-            String responseSchemaName = schemaName(mapping, "Response");
+            String requestSchemaName = schemaName(mapping, "request");
+            String responseSchemaName = schemaName(mapping, "response");
             Iterable<String> requestPaths = schemaPaths(mapping.getRequestSchemaPaths(), mapping.getRequest().keySet());
             Iterable<String> responsePaths = schemaPaths(mapping.getResponseSchemaPaths(), mapping.getResponse().values());
             ObjectSchema requestSchema = schemaWithXsdExamples(mapping.getRequestSchemaFields(), requestPaths);
@@ -58,6 +58,7 @@ public class BridgeOpenApiBuilder {
             schemas.put(responseSchemaName, responseSchema);
 
             Operation operation = new Operation()
+                    //.operationId(buildOperationId(mapping))
                     .tags(List.of(service))
                     .summary(mapping.getSoap().getOperation())
                     .description(buildDescription(mapping))
@@ -153,6 +154,14 @@ public class BridgeOpenApiBuilder {
     }
 
     private String schemaName(MappingDefinition mapping, String suffix) {
-        return mapping.getSoap().getService() + "_" + mapping.getSoap().getOperation() + suffix;
+        return mapping.getSoap().getService() + "_" + mapping.getSoap().getOperation() + " " + suffix;
+    }
+
+    private String buildOperationId(MappingDefinition mapping) {
+        String raw = mapping.getMethod().toLowerCase(Locale.ROOT) + mapping.getPath().replace("/", "_");
+        if (raw.startsWith("_")) {
+            raw = raw.substring(1);
+        }
+        return raw.replace('_', ' ');
     }
 }
