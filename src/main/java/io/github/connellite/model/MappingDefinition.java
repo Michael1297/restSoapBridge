@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -15,6 +16,10 @@ public class MappingDefinition {
     private SoapTarget soap;
     private Map<String, String> request = new LinkedHashMap<>();
     private Map<String, String> response = new LinkedHashMap<>();
+    private List<String> requestSchemaPaths;
+    private List<String> responseSchemaPaths;
+    private List<SchemaField> requestSchemaFields;
+    private List<SchemaField> responseSchemaFields;
 
     public void setRequest(Map<String, String> request) {
         this.request = request != null ? new LinkedHashMap<>(request) : new LinkedHashMap<>();

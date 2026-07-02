@@ -1,6 +1,7 @@
 package io.github.connellite.service.auto;
 
 import io.github.connellite.model.WsdlOperationModel;
+import io.github.connellite.model.SchemaField;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +33,7 @@ public class WsdlParser {
 
             Map<String, String> messageToElement = readMessageElements(definition);
             Map<String, List<String>> elementFields = XsdFieldIndex.readElementFields(definition);
+            Map<String, List<SchemaField>> elementSchemaFields = XsdFieldIndex.readElementSchemaFields(definition);
 
             List<WsdlOperationModel> result = new ArrayList<>();
             for (Object value : definition.getAllPortTypes().values()) {
@@ -50,12 +52,16 @@ public class WsdlParser {
 
                     List<String> inputFields = elementFields.getOrDefault(inputElement, List.of());
                     List<String> outputFields = elementFields.getOrDefault(outputElement, List.of());
+                    List<SchemaField> inputSchemaFields = elementSchemaFields.getOrDefault(inputElement, List.of());
+                    List<SchemaField> outputSchemaFields = elementSchemaFields.getOrDefault(outputElement, List.of());
                     result.add(new WsdlOperationModel(
                             operationName,
                             inputElement,
                             inputFields,
+                            inputSchemaFields,
                             outputElement,
-                            outputFields
+                            outputFields,
+                            outputSchemaFields
                     ));
                 }
             }

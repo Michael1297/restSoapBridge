@@ -9,14 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "bridge")
 public class BridgeProperties {
 
-    public static final String AUTO_MODE = "auto";
-
-    private String mappingsFile;
     private AutoMapping auto;
-
-    public boolean isAutoMode() {
-        return mappingsFile != null && AUTO_MODE.equalsIgnoreCase(mappingsFile.trim());
-    }
 
     @Getter
     @Setter

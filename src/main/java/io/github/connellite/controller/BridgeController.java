@@ -25,10 +25,14 @@ public class BridgeController {
     private final BridgeService bridgeService;
 
     @RequestMapping
-    public ResponseEntity<JsonNode> handle(
-            HttpServletRequest request,
-            @RequestBody(required = false) JsonNode body
-    ) throws Exception {
+    public ResponseEntity<JsonNode> handle(HttpServletRequest request, @RequestBody(required = false) JsonNode body) throws Exception {
+        if (mappingRegistry.getMappings().isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "No mappings loaded. SOAP service discovery may have failed."
+            );
+        }
+
         MappingDefinition mapping = mappingRegistry.find(request.getMethod(), request.getRequestURI())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,

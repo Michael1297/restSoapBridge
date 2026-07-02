@@ -6,7 +6,9 @@ public record WsdlOperationModel(
         String name,
         String inputElement,
         List<String> inputFields,
+        List<SchemaField> inputSchemaFields,
         String outputElement,
-        List<String> outputFields
+        List<String> outputFields,
+        List<SchemaField> outputSchemaFields
 ) {
 }

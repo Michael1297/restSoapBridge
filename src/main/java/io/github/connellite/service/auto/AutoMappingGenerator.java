@@ -3,6 +3,7 @@ package io.github.connellite.service.auto;
 import io.github.connellite.config.BridgeProperties;
 import io.github.connellite.model.DiscoveredSoapService;
 import io.github.connellite.model.MappingDefinition;
+import io.github.connellite.model.SchemaField;
 import io.github.connellite.model.WsdlOperationModel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,17 +55,71 @@ public class AutoMappingGenerator {
 
         Map<String, String> request = new LinkedHashMap<>();
         for (String field : operation.inputFields()) {
-            request.put("$." + field, "$." + operation.inputElement() + "." + field);
+            if (isCollectionItemField(field)) {
+                continue;
+            }
+            request.put(toRestJsonPath(field), toSoapJsonPath(operation.inputElement(), field));
         }
         mapping.setRequest(request);
 
+        List<String> requestSchemaPaths = new ArrayList<>();
+        for (String field : operation.inputFields()) {
+            requestSchemaPaths.add(toRestJsonPath(field));
+        }
+        mapping.setRequestSchemaPaths(requestSchemaPaths);
+        mapping.setRequestSchemaFields(toRestSchemaFields(operation.inputSchemaFields()));
+
         Map<String, String> response = new LinkedHashMap<>();
         for (String field : operation.outputFields()) {
-            response.put("#root." + field, "$." + field);
+            if (isCollectionItemField(field)) {
+                continue;
+            }
+            response.put(toSpelPath(field), toRestJsonPath(field));
         }
         mapping.setResponse(response);
 
+        List<String> responseSchemaPaths = new ArrayList<>();
+        for (String field : operation.outputFields()) {
+            responseSchemaPaths.add(toRestJsonPath(field));
+        }
+        mapping.setResponseSchemaPaths(responseSchemaPaths);
+        mapping.setResponseSchemaFields(toRestSchemaFields(operation.outputSchemaFields()));
+
         return mapping;
+    }
+
+    private static List<SchemaField> toRestSchemaFields(
+            List<SchemaField> fields
+    ) {
+        return fields.stream()
+                .map(field -> new SchemaField(
+                        toRestJsonPath(field.path()),
+                        field.xsdType(),
+                        field.required(),
+                        field.collection()
+                ))
+                .toList();
+    }
+
+    private static boolean isCollectionItemField(String field) {
+        return field.contains("[].");
+    }
+
+    private static String toRestJsonPath(String field) {
+        if (field.endsWith("[]")) {
+            return "$." + field.substring(0, field.length() - 2);
+        }
+        return "$." + field;
+    }
+
+    private static String toSoapJsonPath(String inputElement, String field) {
+        String soapField = field.endsWith("[]") ? field.substring(0, field.length() - 2) : field;
+        return "$." + inputElement + "." + soapField;
+    }
+
+    private static String toSpelPath(String field) {
+        String spelField = field.endsWith("[]") ? field.substring(0, field.length() - 2) : field;
+        return "#root." + spelField;
     }
 
     private String buildPath(String prefix, String serviceName, String operationName) {

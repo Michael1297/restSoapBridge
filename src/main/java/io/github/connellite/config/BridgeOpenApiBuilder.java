@@ -29,18 +29,15 @@ import java.util.Set;
 
 import static io.github.connellite.config.OpenApiExampleFactory.exampleMap;
 import static io.github.connellite.config.OpenApiExampleFactory.extractBodyField;
-import static io.github.connellite.config.OpenApiExampleFactory.schemaWithExamples;
+import static io.github.connellite.config.OpenApiExampleFactory.schemaWithXsdExamples;
 
 @Component
 @RequiredArgsConstructor
 public class BridgeOpenApiBuilder {
 
     private final MappingRegistry mappingRegistry;
-    private final BridgeProperties bridgeProperties;
 
     public OpenAPI build() {
-        String mode = bridgeProperties.isAutoMode() ? "auto" : "manual";
-
         Paths paths = new Paths();
         Components components = new Components();
         //noinspection rawtypes
@@ -53,8 +50,10 @@ public class BridgeOpenApiBuilder {
 
             String requestSchemaName = schemaName(mapping, "Request");
             String responseSchemaName = schemaName(mapping, "Response");
-            ObjectSchema requestSchema = schemaWithExamples(mapping.getRequest().keySet());
-            ObjectSchema responseSchema = schemaWithExamples(mapping.getResponse().values());
+            Iterable<String> requestPaths = schemaPaths(mapping.getRequestSchemaPaths(), mapping.getRequest().keySet());
+            Iterable<String> responsePaths = schemaPaths(mapping.getResponseSchemaPaths(), mapping.getResponse().values());
+            ObjectSchema requestSchema = schemaWithXsdExamples(mapping.getRequestSchemaFields(), requestPaths);
+            ObjectSchema responseSchema = schemaWithXsdExamples(mapping.getResponseSchemaFields(), responsePaths);
             schemas.put(requestSchemaName, requestSchema);
             schemas.put(responseSchemaName, responseSchema);
 
@@ -79,8 +78,8 @@ public class BridgeOpenApiBuilder {
                 .info(new Info()
                         .title("REST SOAP Bridge")
                         .version("1.0")
-                        .description("REST facade over SOAP services. Mapping mode: " + mode
-                                + ". Endpoints: " + mappingRegistry.getMappings().size()))
+                        .description("REST facade over SOAP services. Mapping mode: auto. Endpoints: "
+                                + mappingRegistry.getMappings().size()))
                 .tags(tags)
                 .paths(paths)
                 .components(components);
@@ -89,7 +88,7 @@ public class BridgeOpenApiBuilder {
     private RequestBody buildRequestBody(MappingDefinition mapping, String schemaName, ObjectSchema schema) {
         Map<String, Object> example = schema.getExample() instanceof Map<?, ?> map
                 ? castExample(map)
-                : exampleMap(mapping.getRequest().keySet());
+                : exampleMap(schemaPaths(mapping.getRequestSchemaPaths(), mapping.getRequest().keySet()));
 
         MediaType mediaType = new MediaType()
                 .schema(new Schema<>().$ref("#/components/schemas/" + schemaName))
@@ -147,6 +146,10 @@ public class BridgeOpenApiBuilder {
             case "PATCH" -> pathItem.setPatch(operation);
             default -> pathItem.setPost(operation);
         }
+    }
+
+    private Iterable<String> schemaPaths(List<String> explicitPaths, Iterable<String> fallbackPaths) {
+        return explicitPaths != null && !explicitPaths.isEmpty() ? explicitPaths : fallbackPaths;
     }
 
     private String schemaName(MappingDefinition mapping, String suffix) {

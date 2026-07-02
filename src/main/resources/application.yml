@@ -2,9 +2,7 @@ server:
   port: 9194
 
 bridge:
-  # manual: classpath:mappings.yml  |  auto: generate mappings from WSDL at startup
-  mappings-file: auto
-  # mappings-file: classpath:mappings.yml
+  # mappings are generated from WSDL at startup
   auto:
     services-url: http://127.0.0.1:8080/services/
     path-prefix: /api
