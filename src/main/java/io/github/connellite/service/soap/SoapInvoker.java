@@ -3,7 +3,7 @@ package io.github.connellite.service.soap;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.connellite.exception.SoapFaultException;
-import io.github.connellite.mapper.PathResolver;
+import io.github.connellite.mapper.path.SoapArgument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.cxf.endpoint.Client;
@@ -27,7 +27,7 @@ public class SoapInvoker {
 
     private final SoapClientPool clientPool;
 
-    public Object invoke(String wsdlUrl, String operation, List<PathResolver.SoapArgument> arguments) {
+    public Object invoke(String wsdlUrl, String operation, List<SoapArgument> arguments) {
         Client client = clientPool.getClient(wsdlUrl);
         Object[] params = convertArguments(client, operation, arguments);
         log.debug("Invoking SOAP operation '{}' with {} parameter(s)", operation, params.length);
@@ -45,7 +45,7 @@ public class SoapInvoker {
         }
     }
 
-    private Object[] convertArguments(Client client, String operation, List<PathResolver.SoapArgument> arguments) {
+    private Object[] convertArguments(Client client, String operation, List<SoapArgument> arguments) {
         List<Class<?>> parameterTypes = parameterTypes(client, operation, arguments.size());
         Object[] params = new Object[arguments.size()];
         for (int index = 0; index < arguments.size(); index++) {

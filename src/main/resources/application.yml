@@ -4,7 +4,11 @@ server:
 bridge:
   # mappings are generated from WSDL at startup
   auto:
+    # optional CXF services page; leave empty to skip bulk discovery
     services-url: http://127.0.0.1:8080/services/
+    # optional individual WSDL URLs (any suffix: wsdl-url, wsdl-1-url, wsdl-auth-url, ...)
+    # wsdl-url: http://127.0.0.1:8080/services/Auth?wsdl
+    # wsdl-1-url: http://127.0.0.1:8080/services/ResultList?wsdl
     path-prefix: /api
     http-method: POST
 

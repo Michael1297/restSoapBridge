@@ -20,12 +20,20 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Slf4j
 @Service
 public class WsdlParser {
 
+    private final ConcurrentMap<String, List<WsdlOperationModel>> operationCache = new ConcurrentHashMap<>();
+
     public List<WsdlOperationModel> parseOperations(String wsdlUrl) {
+        return operationCache.computeIfAbsent(wsdlUrl, this::parseOperationsFromWsdl);
+    }
+
+    private List<WsdlOperationModel> parseOperationsFromWsdl(String wsdlUrl) {
         try {
             WSDLReader reader = WSDLFactory.newInstance().newWSDLReader();
             reader.setFeature("javax.wsdl.verbose", false);
@@ -65,7 +73,7 @@ public class WsdlParser {
                     ));
                 }
             }
-            return result;
+            return List.copyOf(result);
         } catch (WSDLException exception) {
             throw new IllegalStateException("Failed to parse WSDL: " + wsdlUrl, exception);
         }

@@ -3,6 +3,8 @@
 Universal REST → SOAP bridge.  
 The application accepts JSON over HTTP, invokes SOAP operations via Apache CXF, and returns JSON.
 
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
 Swagger UI lists all available endpoints generated from WSDL/XSD.
 
 ## Requirements
@@ -17,10 +19,11 @@ Swagger UI lists all available endpoints generated from WSDL/XSD.
 mvn clean package -DskipTests
 ```
 
-JAR:
+The build produces both executable JAR and deployable WAR artifacts:
 
 ```text
 target/restSoapBridge-1.0-SNAPSHOT.jar
+target/restSoapBridge-1.0-SNAPSHOT.war
 ```
 
 ## Run
@@ -38,6 +41,26 @@ After startup:
 | `http://localhost:9194/api/...` | Bridge REST endpoints |
 
 Default port is `9194` (see `server.port`).
+
+### Deploy as WAR
+
+The WAR is intended for an external Jakarta Servlet container compatible with Spring Boot 3 / Spring Framework 6, for example Tomcat 10.1+.
+
+Deploy:
+
+```text
+target/restSoapBridge-1.0-SNAPSHOT.war
+```
+
+If the file is deployed as `restSoapBridge-1.0-SNAPSHOT.war`, the default context path is usually:
+
+```text
+/restSoapBridge-1.0-SNAPSHOT
+```
+
+To deploy at the root context, rename the WAR to `ROOT.war` or configure the context path in the servlet container.
+
+In WAR mode `server.port` is controlled by the external container, not by the application.
 
 ---
 
@@ -151,6 +174,93 @@ java -jar restSoapBridge-1.0-SNAPSHOT.jar
 java -jar restSoapBridge-1.0-SNAPSHOT.jar \
   --spring.config.additional-location=file:./config/
 ```
+
+---
+
+## Configuration for WAR deployment
+
+For WAR deployments, the application is started by the servlet container, so command-line arguments like `java -jar ... --bridge.auto.services-url=...` are not used directly. Use environment variables, JVM system properties, or servlet-container startup options.
+
+### 1. Environment variables
+
+Set variables before starting the container:
+
+```bash
+export BRIDGE_AUTO_SERVICES_URL=http://soap-backend:8080/services/
+export BRIDGE_AUTO_PATH_PREFIX=/api
+export BRIDGE_AUTO_HTTP_METHOD=POST
+export SPRING_CONFIG_ADDITIONAL_LOCATION=file:/etc/rest-soap-bridge/application.yml
+```
+
+Then deploy `restSoapBridge-1.0-SNAPSHOT.war` to the container.
+
+### 2. JVM system properties
+
+For Tomcat on Linux, add properties to `setenv.sh`:
+
+```bash
+export CATALINA_OPTS="$CATALINA_OPTS \
+  -Dspring.config.additional-location=file:/etc/rest-soap-bridge/application.yml \
+  -Dbridge.auto.services-url=http://soap-backend:8080/services/ \
+  -Dbridge.auto.path-prefix=/api \
+  -Dbridge.auto.http-method=POST"
+```
+
+On Windows, use `setenv.bat`:
+
+```bat
+set "CATALINA_OPTS=%CATALINA_OPTS% -Dspring.config.additional-location=file:C:/rest-soap-bridge/application.yml"
+set "CATALINA_OPTS=%CATALINA_OPTS% -Dbridge.auto.services-url=http://soap-backend:8080/services/"
+set "CATALINA_OPTS=%CATALINA_OPTS% -Dbridge.auto.path-prefix=/api"
+set "CATALINA_OPTS=%CATALINA_OPTS% -Dbridge.auto.http-method=POST"
+```
+
+### 3. External `application.yml`
+
+Recommended layout:
+
+```text
+/etc/rest-soap-bridge/
+└── application.yml
+
+$CATALINA_BASE/webapps/
+└── restSoapBridge.war
+```
+
+`/etc/rest-soap-bridge/application.yml`:
+
+```yaml
+bridge:
+  auto:
+    services-url: http://soap-backend:8080/services/
+    # services-url can be empty when only individual WSDL URLs are used
+    # wsdl-url: http://soap-backend:8080/services/Auth?wsdl
+    # wsdl-1-url: http://soap-backend:8080/services/ResultList?wsdl
+    path-prefix: /api
+    http-method: POST
+
+logging:
+  level:
+    io.github.connellite: INFO
+```
+
+Pass the config location through the container:
+
+```bash
+-Dspring.config.additional-location=file:/etc/rest-soap-bridge/application.yml
+```
+
+### 4. URLs in WAR mode
+
+If the WAR is deployed under context path `/restSoapBridge`, URLs include that prefix:
+
+| URL | Description |
+|-----|-------------|
+| `http://host:8080/restSoapBridge/swagger-ui.html` | Swagger UI |
+| `http://host:8080/restSoapBridge/v3/api-docs` | OpenAPI JSON |
+| `http://host:8080/restSoapBridge/api/...` | Bridge REST endpoints |
+
+If deployed as `ROOT.war`, URLs are the same as in JAR mode, except the port belongs to the container.
 
 ---
 

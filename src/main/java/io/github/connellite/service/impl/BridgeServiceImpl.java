@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.connellite.mapper.PathResolver;
+import io.github.connellite.mapper.path.SoapArgument;
 import io.github.connellite.model.MappingDefinition;
 import io.github.connellite.service.BridgeService;
 import io.github.connellite.service.soap.SoapInvoker;
@@ -22,7 +23,7 @@ public class BridgeServiceImpl implements BridgeService {
     @Override
     public ObjectNode execute(MappingDefinition mapping, JsonNode requestBody) {
         MappingDefinition.SoapTarget soap = mapping.getSoap();
-        List<PathResolver.SoapArgument> arguments = PathResolver.buildSoapArguments(mapping.getRequest(), requestBody);
+        List<SoapArgument> arguments = PathResolver.buildSoapArguments(mapping.getRequest(), requestBody);
         Object soapResult = soapInvoker.invoke(soap.getWsdl(), soap.getOperation(), arguments);
         return toJsonBody(mapping.getResponse(), soapResult);
     }

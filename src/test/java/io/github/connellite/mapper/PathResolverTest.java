@@ -2,6 +2,7 @@ package io.github.connellite.mapper;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.connellite.mapper.path.SoapArgument;
 import jakarta.activation.DataHandler;
 import jakarta.activation.DataSource;
 import org.junit.jupiter.api.Test;
@@ -32,7 +33,7 @@ class PathResolverTest {
         mappings.put("$.user", "$.login.user");
         mappings.put("$.pass", "$.login.pass");
 
-        List<PathResolver.SoapArgument> arguments = PathResolver.buildSoapArguments(mappings, body);
+        List<SoapArgument> arguments = PathResolver.buildSoapArguments(mappings, body);
 
         assertEquals(2, arguments.size());
         assertEquals("user", arguments.get(0).name());
@@ -52,7 +53,7 @@ class PathResolverTest {
         mappings.put("$.customer.name", "$.createOrder.customer.name");
         mappings.put("$.customer.phone", "$.createOrder.customer.phone");
 
-        List<PathResolver.SoapArgument> arguments = PathResolver.buildSoapArguments(mappings, body);
+        List<SoapArgument> arguments = PathResolver.buildSoapArguments(mappings, body);
 
         assertEquals(1, arguments.size());
         assertEquals("customer", arguments.get(0).name());
@@ -70,7 +71,7 @@ class PathResolverTest {
 
         Map<String, String> mappings = Map.of("$.products", "$.createOrder.products");
 
-        List<PathResolver.SoapArgument> arguments = PathResolver.buildSoapArguments(mappings, body);
+        List<SoapArgument> arguments = PathResolver.buildSoapArguments(mappings, body);
 
         assertEquals(1, arguments.size());
         assertEquals("products", arguments.get(0).name());

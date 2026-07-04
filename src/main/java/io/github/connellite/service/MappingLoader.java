@@ -1,6 +1,7 @@
 package io.github.connellite.service;
 
 import io.github.connellite.config.BridgeProperties;
+import io.github.connellite.config.WsdlUrlCollector;
 import io.github.connellite.model.MappingDefinition;
 import io.github.connellite.model.MappingRegistry;
 import io.github.connellite.service.auto.AutoMappingGenerator;
@@ -19,12 +20,25 @@ public class MappingLoader {
 
     private final BridgeProperties bridgeProperties;
     private final AutoMappingGenerator autoMappingGenerator;
+    private final WsdlUrlCollector wsdlUrlCollector;
 
     public MappingRegistry load() throws IOException {
         BridgeProperties.AutoMapping auto = requireAutoConfig();
-        log.info("Loading mappings in AUTO mode from {}", auto.getServicesUrl());
+        logDiscoverySources(auto);
         List<MappingDefinition> mappings = autoMappingGenerator.generate();
         return new MappingRegistry(mappings);
+    }
+
+    private void logDiscoverySources(BridgeProperties.AutoMapping auto) {
+        if (StringUtils.hasText(auto.getServicesUrl())) {
+            log.info("Loading mappings in AUTO mode from services page {}", auto.getServicesUrl());
+            return;
+        }
+        if (!wsdlUrlCollector.wsdlUrls().isEmpty()) {
+            log.info("Loading mappings in AUTO mode from {} WSDL URL(s)", wsdlUrlCollector.wsdlUrls().size());
+            return;
+        }
+        log.info("Loading mappings in AUTO mode with no discovery sources configured");
     }
 
     private BridgeProperties.AutoMapping requireAutoConfig() {
@@ -32,7 +46,6 @@ public class MappingLoader {
         if (auto == null) {
             throw new IllegalStateException("bridge.auto section is required");
         }
-        requireText(auto.getServicesUrl(), "bridge.auto.services-url");
         requireText(auto.getPathPrefix(), "bridge.auto.path-prefix");
         requireText(auto.getHttpMethod(), "bridge.auto.http-method");
         return auto;

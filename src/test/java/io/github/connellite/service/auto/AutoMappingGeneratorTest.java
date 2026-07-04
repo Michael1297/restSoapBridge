@@ -1,6 +1,7 @@
 package io.github.connellite.service.auto;
 
 import io.github.connellite.config.BridgeProperties;
+import io.github.connellite.config.WsdlUrlCollector;
 import io.github.connellite.model.DiscoveredSoapService;
 import io.github.connellite.model.MappingDefinition;
 import io.github.connellite.model.SchemaField;
@@ -26,7 +27,9 @@ class AutoMappingGeneratorTest {
         properties.setAuto(auto);
 
         WsdlServiceDiscovery discovery = mock(WsdlServiceDiscovery.class);
-        when(discovery.discover(auto.getServicesUrl())).thenReturn(List.of(
+        WsdlUrlCollector wsdlUrlCollector = mock(WsdlUrlCollector.class);
+        when(wsdlUrlCollector.wsdlUrls()).thenReturn(List.of());
+        when(discovery.discover(auto.getServicesUrl(), List.of())).thenReturn(List.of(
                 new DiscoveredSoapService(
                         "OrderService",
                         "http://localhost:8080/services/OrderService?wsdl",
@@ -47,7 +50,7 @@ class AutoMappingGeneratorTest {
                 )
         ));
 
-        AutoMappingGenerator generator = new AutoMappingGenerator(properties, discovery);
+        AutoMappingGenerator generator = new AutoMappingGenerator(properties, discovery, wsdlUrlCollector);
 
         List<MappingDefinition> mappings = generator.generate();
 
@@ -68,5 +71,23 @@ class AutoMappingGeneratorTest {
                 new SchemaField("$.products", "object", true, true),
                 new SchemaField("$.products[].sku", "string", true, false)
         ), mapping.getRequestSchemaFields());
+    }
+
+    @Test
+    void generate_returnsEmptyMappingsWhenNoDiscoverySourcesConfigured() throws Exception {
+        BridgeProperties properties = new BridgeProperties();
+        BridgeProperties.AutoMapping auto = new BridgeProperties.AutoMapping();
+        auto.setPathPrefix("/api");
+        auto.setHttpMethod("POST");
+        properties.setAuto(auto);
+
+        WsdlServiceDiscovery discovery = mock(WsdlServiceDiscovery.class);
+        WsdlUrlCollector wsdlUrlCollector = mock(WsdlUrlCollector.class);
+        when(wsdlUrlCollector.wsdlUrls()).thenReturn(List.of());
+        when(discovery.discover(null, List.of())).thenReturn(List.of());
+
+        AutoMappingGenerator generator = new AutoMappingGenerator(properties, discovery, wsdlUrlCollector);
+
+        assertEquals(0, generator.generate().size());
     }
 }

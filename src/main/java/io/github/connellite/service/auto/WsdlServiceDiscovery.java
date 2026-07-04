@@ -9,8 +9,10 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,7 +25,34 @@ public class WsdlServiceDiscovery {
 
     private final WsdlParser wsdlParser;
 
-    public List<DiscoveredSoapService> discover(String servicesUrl) throws IOException {
+    public List<DiscoveredSoapService> discover(String servicesUrl, List<String> wsdlUrls) throws IOException {
+        Map<String, DiscoveredSoapService> discoveredByWsdl = new LinkedHashMap<>();
+
+        if (StringUtils.hasText(servicesUrl)) {
+            for (DiscoveredSoapService service : discoverFromServicesPage(servicesUrl)) {
+                discoveredByWsdl.putIfAbsent(service.wsdlUrl(), service);
+            }
+        }
+
+        for (String wsdlUrl : wsdlUrls) {
+            if (!StringUtils.hasText(wsdlUrl) || discoveredByWsdl.containsKey(wsdlUrl)) {
+                continue;
+            }
+            DiscoveredSoapService service = discoverFromWsdl(wsdlUrl);
+            discoveredByWsdl.put(wsdlUrl, service);
+            log.debug("Discovered service {} from WSDL URL {}", service.name(), wsdlUrl);
+        }
+
+        if (discoveredByWsdl.isEmpty()) {
+            log.info("No SOAP services discovered (services-url and wsdl-*-url are empty or missing)");
+            return List.of();
+        }
+
+        log.info("Discovered {} SOAP service(s)", discoveredByWsdl.size());
+        return List.copyOf(discoveredByWsdl.values());
+    }
+
+    private List<DiscoveredSoapService> discoverFromServicesPage(String servicesUrl) throws IOException {
         String baseUrl = normalizeBaseUrl(servicesUrl);
         log.info("Discovering SOAP services from {}", baseUrl);
 
@@ -60,9 +89,33 @@ public class WsdlServiceDiscovery {
             discovered.add(new DiscoveredSoapService(entry.getKey(), wsdlUrl, operations));
             log.debug("Discovered service {} with {} operation(s)", entry.getKey(), operations.size());
         }
-
-        log.info("Discovered {} SOAP service(s)", discovered.size());
         return discovered;
+    }
+
+    public DiscoveredSoapService discoverFromWsdl(String wsdlUrl) {
+        String serviceName = serviceNameFromWsdlUrl(wsdlUrl);
+        List<WsdlOperationModel> operations = wsdlParser.parseOperations(wsdlUrl);
+        log.info("Loaded {} operation(s) from WSDL {}", operations.size(), wsdlUrl);
+        return new DiscoveredSoapService(serviceName, wsdlUrl, operations);
+    }
+
+    static String serviceNameFromWsdlUrl(String wsdlUrl) {
+        try {
+            URI uri = URI.create(wsdlUrl);
+            String path = uri.getPath();
+            if (path != null && !path.isBlank()) {
+                String segment = path.substring(path.lastIndexOf('/') + 1);
+                if (!segment.isBlank()) {
+                    if (segment.endsWith(".wsdl")) {
+                        segment = segment.substring(0, segment.length() - 5);
+                    }
+                    return segment;
+                }
+            }
+        } catch (IllegalArgumentException ignored) {
+            // fall through to default
+        }
+        return "SoapService";
     }
 
     private String normalizeBaseUrl(String servicesUrl) {

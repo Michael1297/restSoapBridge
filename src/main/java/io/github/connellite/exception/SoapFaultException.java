@@ -1,18 +1,26 @@
 package io.github.connellite.exception;
 
 import lombok.Getter;
+import org.apache.cxf.binding.soap.SoapFault;
 import org.springframework.core.NestedExceptionUtils;
+import org.springframework.http.HttpStatusCode;
 
 @Getter
 public class SoapFaultException extends RuntimeException {
 
     private final String faultName;
     private final int httpStatus;
+    private final String faultCode;
 
-    public SoapFaultException(String faultName, String message, int httpStatus, Throwable cause) {
+    public SoapFaultException(String faultName, String message, int httpStatus, String faultCode, Throwable cause) {
         super(message, cause);
         this.faultName = faultName;
         this.httpStatus = httpStatus;
+        this.faultCode = faultCode;
+    }
+
+    public HttpStatusCode httpStatusCode() {
+        return HttpStatusCode.valueOf(httpStatus);
     }
 
     public static SoapFaultException from(Throwable throwable) {
@@ -27,6 +35,9 @@ public class SoapFaultException extends RuntimeException {
             default -> 502;
         };
         String message = root.getMessage() != null ? root.getMessage() : faultName;
-        return new SoapFaultException(faultName, message, status, throwable);
+        String faultCode = root instanceof SoapFault soapFault && soapFault.getFaultCode() != null
+                ? soapFault.getFaultCode().toString()
+                : null;
+        return new SoapFaultException(faultName, message, status, faultCode, throwable);
     }
 }

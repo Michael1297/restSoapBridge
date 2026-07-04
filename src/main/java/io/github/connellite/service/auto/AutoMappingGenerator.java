@@ -1,6 +1,7 @@
 package io.github.connellite.service.auto;
 
 import io.github.connellite.config.BridgeProperties;
+import io.github.connellite.config.WsdlUrlCollector;
 import io.github.connellite.model.DiscoveredSoapService;
 import io.github.connellite.model.MappingDefinition;
 import io.github.connellite.model.SchemaField;
@@ -22,10 +23,11 @@ public class AutoMappingGenerator {
 
     private final BridgeProperties bridgeProperties;
     private final WsdlServiceDiscovery serviceDiscovery;
+    private final WsdlUrlCollector wsdlUrlCollector;
 
     public List<MappingDefinition> generate() throws IOException {
         BridgeProperties.AutoMapping auto = bridgeProperties.getAuto();
-        List<DiscoveredSoapService> services = serviceDiscovery.discover(auto.getServicesUrl());
+        List<DiscoveredSoapService> services = serviceDiscovery.discover(auto.getServicesUrl(), wsdlUrlCollector.wsdlUrls());
         List<MappingDefinition> mappings = new ArrayList<>();
 
         for (DiscoveredSoapService service : services) {

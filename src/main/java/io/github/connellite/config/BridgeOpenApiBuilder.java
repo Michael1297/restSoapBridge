@@ -36,8 +36,22 @@ import static io.github.connellite.config.OpenApiExampleFactory.schemaWithXsdExa
 public class BridgeOpenApiBuilder {
 
     private final MappingRegistry mappingRegistry;
+    private volatile OpenAPI cachedOpenApi;
 
     public OpenAPI build() {
+        OpenAPI local = cachedOpenApi;
+        if (local != null) {
+            return local;
+        }
+        synchronized (this) {
+            if (cachedOpenApi == null) {
+                cachedOpenApi = buildOpenApi();
+            }
+            return cachedOpenApi;
+        }
+    }
+
+    private OpenAPI buildOpenApi() {
         Paths paths = new Paths();
         Components components = new Components();
         //noinspection rawtypes
