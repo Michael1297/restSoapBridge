@@ -118,6 +118,24 @@ class PathResolverTest {
     }
 
     @Test
+    void readFromSoapResult_skipsSyntheticUnderscoreReturnWrapperForObjectProperty() {
+        CallReturn response = new CallReturn("ok");
+
+        Object value = PathResolver.readFromSoapResult(response, "#root._return.entry");
+
+        assertEquals("ok", value);
+    }
+
+    @Test
+    void readFromSoapResult_trimsNonAlphanumericWrapperNameEdges() {
+        CallReturn response = new CallReturn("ok");
+
+        Object value = PathResolver.readFromSoapResult(response, "#root.__RETURN__.entry");
+
+        assertEquals("ok", value);
+    }
+
+    @Test
     void readFromSoapResult_skipsSyntheticReturnWrapperForWholeObject() {
         FulltextConfig config = new FulltextConfig(true);
 
@@ -199,6 +217,9 @@ class PathResolverTest {
         public boolean isAnalyzeAbbreviations() {
             return analyzeAbbreviations;
         }
+    }
+
+    private record CallReturn(String entry) {
     }
 
     private record TestDataSource(String content) implements DataSource {
