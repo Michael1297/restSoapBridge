@@ -9,12 +9,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.cxf.endpoint.Client;
 import org.apache.cxf.service.model.BindingOperationInfo;
 import org.apache.cxf.service.model.MessagePartInfo;
+import org.apache.ws.commons.schema.XmlSchemaElement;
+import org.springframework.boot.convert.ApplicationConversionService;
+import org.springframework.core.convert.ConversionService;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @Slf4j
 @Component
@@ -24,6 +27,8 @@ public class SoapInvoker {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
+
+    private static final ConversionService CONVERSION_SERVICE = ApplicationConversionService.getSharedInstance();
 
     private final SoapClientPool clientPool;
 
@@ -46,32 +51,32 @@ public class SoapInvoker {
     }
 
     private Object[] convertArguments(Client client, String operation, List<SoapArgument> arguments) {
-        List<Class<?>> parameterTypes = parameterTypes(client, operation, arguments.size());
+        List<ParameterDescriptor> parameters = parameters(client, operation, arguments.size());
         Object[] params = new Object[arguments.size()];
         for (int index = 0; index < arguments.size(); index++) {
             Object value = arguments.get(index).value();
-            Class<?> targetType = index < parameterTypes.size() ? parameterTypes.get(index) : null;
-            params[index] = convertArgument(value, targetType);
+            ParameterDescriptor parameter = index < parameters.size() ? parameters.get(index) : ParameterDescriptor.unknown();
+            params[index] = convertArgument(value, parameter);
         }
         return params;
     }
 
-    private List<Class<?>> parameterTypes(Client client, String operation, int argumentCount) {
+    private List<ParameterDescriptor> parameters(Client client, String operation, int argumentCount) {
         BindingOperationInfo operationInfo = findOperation(client, operation);
         if (operationInfo == null) {
             return List.of();
         }
 
         if (operationInfo.isUnwrappedCapable()) {
-            List<Class<?>> unwrappedTypes = inputPartTypes(operationInfo.getUnwrappedOperation());
-            if (unwrappedTypes.size() == argumentCount) {
-                return unwrappedTypes;
+            List<ParameterDescriptor> unwrappedParameters = inputParameters(operationInfo.getUnwrappedOperation());
+            if (unwrappedParameters.size() == argumentCount) {
+                return unwrappedParameters;
             }
         }
 
-        List<Class<?>> wrappedTypes = inputPartTypes(operationInfo);
-        if (wrappedTypes.size() == argumentCount) {
-            return wrappedTypes;
+        List<ParameterDescriptor> wrappedParameters = inputParameters(operationInfo);
+        if (wrappedParameters.size() == argumentCount) {
+            return wrappedParameters;
         }
         return List.of();
     }
@@ -83,26 +88,98 @@ public class SoapInvoker {
                 .orElse(null);
     }
 
-    private List<Class<?>> inputPartTypes(BindingOperationInfo operationInfo) {
+    private List<ParameterDescriptor> inputParameters(BindingOperationInfo operationInfo) {
         if (operationInfo == null || operationInfo.getInput() == null) {
             return List.of();
         }
-        List<Class<?>> types = new ArrayList<>();
+        List<ParameterDescriptor> parameters = new ArrayList<>();
         for (MessagePartInfo part : operationInfo.getInput().getMessageParts()) {
-            types.add(part.getTypeClass());
+            parameters.add(parameter(part));
         }
-        return types.stream().filter(Objects::nonNull).toList();
+        return parameters.stream().filter(parameter -> parameter != null).toList();
+    }
+
+    private ParameterDescriptor parameter(MessagePartInfo part) {
+        Class<?> targetType = part.getTypeClass();
+        if (targetType == null) {
+            return null;
+        }
+        return new ParameterDescriptor(targetType, isRepeating(part, targetType));
+    }
+
+    private boolean isRepeating(MessagePartInfo part, Class<?> targetType) {
+        if (part.getXmlSchema() instanceof XmlSchemaElement element && element.getMaxOccurs() > 1) {
+            return true;
+        }
+        if (!targetType.isArray()) {
+            return false;
+        }
+        Class<?> componentType = targetType.getComponentType();
+        if (componentType == null || componentType.isPrimitive()) {
+            return false;
+        }
+        return targetType != Byte[].class;
     }
 
     static Object convertArgument(Object value, Class<?> targetType) {
-        if (value == null || targetType == null || targetType.isInstance(value)) {
+        return convertArgument(value, new ParameterDescriptor(targetType, false));
+    }
+
+    static Object convertArgument(Object value, Class<?> targetType, boolean repeating) {
+        return convertArgument(value, new ParameterDescriptor(targetType, repeating));
+    }
+
+    private static Object convertArgument(Object value, ParameterDescriptor parameter) {
+        Class<?> targetType = parameter.targetType();
+        if (value == null || targetType == null) {
             return value;
+        }
+        if (parameter.repeating()) {
+            return convertRepeatingArgument(value, targetType);
+        }
+        if (targetType.isInstance(value)) {
+            return value;
+        }
+        if (CONVERSION_SERVICE.canConvert(value.getClass(), targetType)) {
+            return CONVERSION_SERVICE.convert(value, targetType);
         }
         if (value instanceof Map<?, ?> || value instanceof List<?>) {
             return OBJECT_MAPPER.convertValue(value, targetType);
         }
         if (isSimpleType(targetType)) {
             return OBJECT_MAPPER.convertValue(value, targetType);
+        }
+        return value;
+    }
+
+    private static List<?> convertRepeatingArgument(Object value, Class<?> targetType) {
+        Class<?> elementType = targetType.isArray()
+                ? targetType.getComponentType()
+                : (List.class.isAssignableFrom(targetType) ? Object.class : targetType);
+        if (value instanceof List<?> values) {
+            return values.stream()
+                    .map(item -> convertListItem(item, elementType))
+                    .toList();
+        }
+        if (value.getClass().isArray()) {
+            List<Object> values = new ArrayList<>();
+            for (int index = 0; index < Array.getLength(value); index++) {
+                values.add(convertListItem(Array.get(value, index), elementType));
+            }
+            return values;
+        }
+        return List.of(convertListItem(value, elementType));
+    }
+
+    private static Object convertListItem(Object value, Class<?> elementType) {
+        if (value == null || elementType == null || elementType == Object.class || elementType.isInstance(value)) {
+            return value;
+        }
+        if (CONVERSION_SERVICE.canConvert(value.getClass(), elementType)) {
+            return CONVERSION_SERVICE.convert(value, elementType);
+        }
+        if (value instanceof Map<?, ?> || value instanceof List<?> || isSimpleType(elementType)) {
+            return OBJECT_MAPPER.convertValue(value, elementType);
         }
         return value;
     }
@@ -114,5 +191,12 @@ public class SoapInvoker {
                 || Boolean.class == targetType
                 || Character.class == targetType
                 || Enum.class.isAssignableFrom(targetType);
+    }
+
+    private record ParameterDescriptor(Class<?> targetType, boolean repeating) {
+
+        private static ParameterDescriptor unknown() {
+            return new ParameterDescriptor(null, false);
+        }
     }
 }

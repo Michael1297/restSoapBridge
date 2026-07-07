@@ -3,10 +3,12 @@ package io.github.connellite.service.soap;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 class SoapInvokerTest {
 
@@ -42,6 +44,45 @@ class SoapInvokerTest {
         Object converted = SoapInvoker.convertArgument("10", Integer.class);
 
         assertEquals(10, converted);
+    }
+
+    @Test
+    void convertArgument_keepsBinaryArrayForSingleParameter() {
+        byte[] content = new byte[]{1, 2, 3, 4};
+
+        Object converted = SoapInvoker.convertArgument(content, byte[].class);
+
+        assertArrayEquals(content, assertInstanceOf(byte[].class, converted));
+    }
+
+    @Test
+    void convertArgument_returnsListForRepeatingArrayParameter() {
+        Map<String, Object> first = new LinkedHashMap<>();
+        first.put("key", "author");
+        first.put("value", "Pushkin");
+        Map<String, Object> second = new LinkedHashMap<>();
+        second.put("key", "title");
+        second.put("value", "Dubrovsky");
+
+        Object converted = SoapInvoker.convertArgument(List.of(first, second), MapEntryStringString[].class, true);
+
+        List<?> entries = assertInstanceOf(List.class, converted);
+        assertEquals(2, entries.size());
+        MapEntryStringString entry = assertInstanceOf(MapEntryStringString.class, entries.get(0));
+        assertEquals("author", entry.getKey());
+        assertEquals("Pushkin", entry.getValue());
+    }
+
+    @Test
+    void convertArgument_normalizesRepeatingArrayValueToList() {
+        MapEntryStringString entry = new MapEntryStringString();
+        entry.setKey("author");
+        entry.setValue("Pushkin");
+
+        Object converted = SoapInvoker.convertArgument(new MapEntryStringString[]{entry}, MapEntryStringString[].class, true);
+
+        List<?> entries = assertInstanceOf(List.class, converted);
+        assertEquals(entry, entries.get(0));
     }
 
     public static class SimpleQueryParams {
@@ -89,6 +130,28 @@ class SoapInvokerTest {
 
         public void setValueList(java.util.List<String> valueList) {
             this.valueList = valueList;
+        }
+    }
+
+    public static class MapEntryStringString {
+
+        private String key;
+        private String value;
+
+        public String getKey() {
+            return key;
+        }
+
+        public void setKey(String key) {
+            this.key = key;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
         }
     }
 }

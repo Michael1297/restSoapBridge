@@ -11,10 +11,13 @@ import org.springframework.expression.PropertyAccessor;
 import org.springframework.expression.TypedValue;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.util.LinkedCaseInsensitiveMap;
 
+import java.lang.reflect.Array;
 import java.util.Collection;
-import java.util.List;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
 @UtilityClass
 public class SoapPathResolver {
@@ -41,9 +44,9 @@ public class SoapPathResolver {
 
     private static Object unwrapSoapContainer(Object soapResult) {
         if (soapResult.getClass().isArray()) {
-            Object[] array = (Object[]) soapResult;
-            if (array.length == 1) {
-                return unwrapSoapContainer(array[0]);
+            int length = Array.getLength(soapResult);
+            if (length == 1) {
+                return unwrapSoapContainer(Array.get(soapResult, 0));
             }
         }
         if (soapResult instanceof Collection<?> collection && collection.size() == 1) {
@@ -52,9 +55,15 @@ public class SoapPathResolver {
         return soapResult;
     }
 
+    @SuppressWarnings("NullableProblems")
     private static final class SyntheticSoapWrapperAccessor implements PropertyAccessor {
 
-        private static final List<String> WRAPPER_FIELDS = List.of("return", "result");
+        private static final Set<String> WRAPPER_FIELDS = Collections.newSetFromMap(new LinkedCaseInsensitiveMap<>());
+
+        static {
+            WRAPPER_FIELDS.add("return");
+            WRAPPER_FIELDS.add("result");
+        }
 
         @Override
         public Class<?>[] getSpecificTargetClasses() {
@@ -65,7 +74,7 @@ public class SoapPathResolver {
         public boolean canRead(EvaluationContext context, Object target, String name) {
             return target != null
                     && !(target instanceof Map<?, ?>)
-                    && WRAPPER_FIELDS.contains(name)
+                    && WRAPPER_FIELDS.contains(normalizeWrapperFieldName(name))
                     && !new BeanWrapperImpl(target).isReadableProperty(name);
         }
 
@@ -85,6 +94,22 @@ public class SoapPathResolver {
         @Override
         public void write(EvaluationContext context, Object target, String name, Object newValue) throws AccessException {
             throw new AccessException("Synthetic SOAP wrapper fields are read-only");
+        }
+
+        private String normalizeWrapperFieldName(String name) {
+            if (name == null || name.isBlank()) {
+                return "";
+            }
+
+            int start = 0;
+            int end = name.length();
+            while (start < end && !Character.isLetterOrDigit(name.charAt(start))) {
+                start++;
+            }
+            while (end > start && !Character.isLetterOrDigit(name.charAt(end - 1))) {
+                end--;
+            }
+            return name.substring(start, end);
         }
     }
 }

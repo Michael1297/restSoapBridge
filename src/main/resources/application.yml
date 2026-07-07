@@ -11,6 +11,8 @@ bridge:
     # wsdl-1-url: http://127.0.0.1:8080/services/ResultList?wsdl
     path-prefix: /api
     http-method: POST
+    connect-timeout: 30s
+    receive-timeout: 60s
 
 springdoc:
   show-actuator: false

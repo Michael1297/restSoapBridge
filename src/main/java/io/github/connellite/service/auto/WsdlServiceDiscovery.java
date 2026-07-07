@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,12 +30,10 @@ public class WsdlServiceDiscovery {
         Map<String, DiscoveredSoapService> discoveredByWsdl = new LinkedHashMap<>();
 
         if (StringUtils.hasText(servicesUrl)) {
-            for (DiscoveredSoapService service : discoverFromServicesPage(servicesUrl)) {
-                discoveredByWsdl.putIfAbsent(service.wsdlUrl(), service);
-            }
+            discoverFromServicesPageSafely(servicesUrl, discoveredByWsdl);
         }
 
-        for (String wsdlUrl : wsdlUrls) {
+        for (String wsdlUrl : nullSafeList(wsdlUrls)) {
             if (!StringUtils.hasText(wsdlUrl) || discoveredByWsdl.containsKey(wsdlUrl)) {
                 continue;
             }
@@ -50,6 +49,16 @@ public class WsdlServiceDiscovery {
 
         log.info("Discovered {} SOAP service(s)", discoveredByWsdl.size());
         return List.copyOf(discoveredByWsdl.values());
+    }
+
+    private void discoverFromServicesPageSafely(String servicesUrl, Map<String, DiscoveredSoapService> discoveredByWsdl) {
+        try {
+            for (DiscoveredSoapService service : discoverFromServicesPage(servicesUrl)) {
+                discoveredByWsdl.putIfAbsent(service.wsdlUrl(), service);
+            }
+        } catch (IOException exception) {
+            log.warn("Cannot discover SOAP services from {}: {}", servicesUrl, exception.getMessage());
+        }
     }
 
     private List<DiscoveredSoapService> discoverFromServicesPage(String servicesUrl) throws IOException {
@@ -79,7 +88,8 @@ public class WsdlServiceDiscovery {
         }
 
         if (services.isEmpty()) {
-            throw new IllegalStateException("No SOAP services found at " + baseUrl);
+            log.warn("No SOAP services found at {}", baseUrl);
+            return List.of();
         }
 
         List<DiscoveredSoapService> discovered = new ArrayList<>();
@@ -123,5 +133,9 @@ public class WsdlServiceDiscovery {
             return servicesUrl;
         }
         return servicesUrl + "/";
+    }
+
+    private List<String> nullSafeList(List<String> values) {
+        return values == null ? Collections.emptyList() : values;
     }
 }

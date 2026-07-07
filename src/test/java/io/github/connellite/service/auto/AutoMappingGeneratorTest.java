@@ -62,7 +62,7 @@ class AutoMappingGeneratorTest {
                 "$.customer.phone", "$.createOrder.customer.phone",
                 "$.products", "$.createOrder.products"
         ), mapping.getRequest());
-        assertEquals(Map.of("#root.return", "$.return"), mapping.getResponse());
+        assertEquals(Map.of("#root", "$.return"), mapping.getResponse());
         assertEquals(List.of("$.customer.name", "$.customer.phone", "$.products", "$.products[].sku"),
                 mapping.getRequestSchemaPaths());
         assertEquals(List.of(
@@ -89,5 +89,46 @@ class AutoMappingGeneratorTest {
         AutoMappingGenerator generator = new AutoMappingGenerator(properties, discovery, wsdlUrlCollector);
 
         assertEquals(0, generator.generate().size());
+    }
+
+    @Test
+    void generate_stripsWsdlResponseWrapperFromNestedSpelPaths() throws Exception {
+        BridgeProperties properties = new BridgeProperties();
+        BridgeProperties.AutoMapping auto = new BridgeProperties.AutoMapping();
+        auto.setServicesUrl("http://localhost:8080/services/");
+        auto.setPathPrefix("api");
+        auto.setHttpMethod("POST");
+        properties.setAuto(auto);
+
+        WsdlServiceDiscovery discovery = mock(WsdlServiceDiscovery.class);
+        WsdlUrlCollector wsdlUrlCollector = mock(WsdlUrlCollector.class);
+        when(wsdlUrlCollector.wsdlUrls()).thenReturn(List.of());
+        when(discovery.discover(auto.getServicesUrl(), List.of())).thenReturn(List.of(
+                new DiscoveredSoapService(
+                        "ConfigService",
+                        "http://localhost:8080/services/ConfigService?wsdl",
+                        List.of(new WsdlOperationModel(
+                                "GetConfig",
+                                "getConfig",
+                                List.of(),
+                                List.of(),
+                                "GetConfigResponse",
+                                List.of("return.analyzeAbbreviations", "return.language"),
+                                List.of(
+                                        new SchemaField("return.analyzeAbbreviations", "boolean", true, false),
+                                        new SchemaField("return.language", "string", true, false)
+                                )
+                        ))
+                )
+        ));
+
+        AutoMappingGenerator generator = new AutoMappingGenerator(properties, discovery, wsdlUrlCollector);
+
+        MappingDefinition mapping = generator.generate().get(0);
+
+        assertEquals(Map.of(
+                "#root.analyzeAbbreviations", "$.return.analyzeAbbreviations",
+                "#root.language", "$.return.language"
+        ), mapping.getResponse());
     }
 }

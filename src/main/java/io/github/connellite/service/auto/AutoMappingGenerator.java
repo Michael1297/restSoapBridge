@@ -72,11 +72,12 @@ public class AutoMappingGenerator {
         mapping.setRequestSchemaFields(toRestSchemaFields(operation.inputSchemaFields()));
 
         Map<String, String> response = new LinkedHashMap<>();
+        String payloadWrapperField = payloadWrapperField(operation);
         for (String field : operation.outputFields()) {
             if (isCollectionItemField(field)) {
                 continue;
             }
-            response.put(toSpelPath(field), toRestJsonPath(field));
+            response.put(toSpelPath(field, payloadWrapperField), toRestJsonPath(field));
         }
         mapping.setResponse(response);
 
@@ -120,8 +121,59 @@ public class AutoMappingGenerator {
     }
 
     private static String toSpelPath(String field) {
+        return toSpelPath(field, null);
+    }
+
+    private static String toSpelPath(String field, String payloadWrapperField) {
         String spelField = field.endsWith("[]") ? field.substring(0, field.length() - 2) : field;
+        if (payloadWrapperField != null && topLevelField(spelField).equals(payloadWrapperField)) {
+            spelField = stripTopLevelField(spelField);
+        }
+        if (spelField.isBlank()) {
+            return "#root";
+        }
         return "#root." + spelField;
+    }
+
+    private static String payloadWrapperField(WsdlOperationModel operation) {
+        if (!isResponseWrapperElement(operation)) {
+            return null;
+        }
+
+        String wrapper = null;
+        for (String field : operation.outputFields()) {
+            String topLevel = topLevelField(field);
+            if (topLevel.isBlank()) {
+                continue;
+            }
+            if (wrapper == null) {
+                wrapper = topLevel;
+            } else if (!wrapper.equals(topLevel)) {
+                return null;
+            }
+        }
+        return wrapper;
+    }
+
+    private static boolean isResponseWrapperElement(WsdlOperationModel operation) {
+        String outputElement = operation.outputElement();
+        return outputElement != null
+                && !outputElement.isBlank()
+                && outputElement.equalsIgnoreCase(operation.name() + "Response");
+    }
+
+    private static String topLevelField(String field) {
+        if (field == null || field.isBlank()) {
+            return "";
+        }
+        String normalized = field.endsWith("[]") ? field.substring(0, field.length() - 2) : field;
+        int dotIndex = normalized.indexOf('.');
+        return dotIndex >= 0 ? normalized.substring(0, dotIndex) : normalized;
+    }
+
+    private static String stripTopLevelField(String field) {
+        int dotIndex = field.indexOf('.');
+        return dotIndex >= 0 ? field.substring(dotIndex + 1) : "";
     }
 
     private String buildPath(String prefix, String serviceName, String operationName) {

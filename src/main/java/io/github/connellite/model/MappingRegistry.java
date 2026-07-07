@@ -25,7 +25,10 @@ public class MappingRegistry {
     }
 
     public Optional<MappingDefinition> find(String httpMethod, String requestPath) {
-        HttpMethod method = HttpMethod.valueOf(httpMethod.toUpperCase(Locale.ROOT));
+        HttpMethod method = resolveMethod(httpMethod);
+        if (method == null) {
+            return Optional.empty();
+        }
         String normalizedPath = normalizePath(requestPath);
 
         MappingDefinition exact = exactRoutes.get(new RouteKey(method, normalizedPath));
@@ -36,6 +39,17 @@ public class MappingRegistry {
         return mappingsByMethod.getOrDefault(method, List.of()).stream()
                 .filter(mapping -> pathMatcher.match(mapping.getPath(), normalizedPath))
                 .findFirst();
+    }
+
+    private HttpMethod resolveMethod(String httpMethod) {
+        if (httpMethod == null || httpMethod.isBlank()) {
+            return null;
+        }
+        try {
+            return HttpMethod.valueOf(httpMethod.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private void indexMappings(List<MappingDefinition> source) {

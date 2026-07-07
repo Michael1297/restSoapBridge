@@ -7,7 +7,6 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.regex.Pattern;

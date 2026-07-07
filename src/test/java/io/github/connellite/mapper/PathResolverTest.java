@@ -100,6 +100,13 @@ class PathResolverTest {
     }
 
     @Test
+    void readFromSoapResult_unwrapsSingletonPrimitiveArrayBeforeRootPropertyExpression() {
+        Object value = PathResolver.readFromSoapResult(new int[]{42}, "#root.return");
+
+        assertEquals(42, value);
+    }
+
+    @Test
     void readFromSoapResult_returnsMultiCollectionForRootPropertyExpression() {
         List<String> tokens = List.of("token-1", "token-2");
 
@@ -115,6 +122,24 @@ class PathResolverTest {
         Object value = PathResolver.readFromSoapResult(config, "#root.return.analyzeAbbreviations");
 
         assertEquals(true, value);
+    }
+
+    @Test
+    void readFromSoapResult_skipsSyntheticUnderscoreReturnWrapperForObjectProperty() {
+        CallReturn response = new CallReturn("ok");
+
+        Object value = PathResolver.readFromSoapResult(response, "#root._return.entry");
+
+        assertEquals("ok", value);
+    }
+
+    @Test
+    void readFromSoapResult_trimsNonAlphanumericWrapperNameEdges() {
+        CallReturn response = new CallReturn("ok");
+
+        Object value = PathResolver.readFromSoapResult(response, "#root.__RETURN__.entry");
+
+        assertEquals("ok", value);
     }
 
     @Test
@@ -199,6 +224,9 @@ class PathResolverTest {
         public boolean isAnalyzeAbbreviations() {
             return analyzeAbbreviations;
         }
+    }
+
+    private record CallReturn(String entry) {
     }
 
     private record TestDataSource(String content) implements DataSource {
