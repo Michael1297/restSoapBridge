@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+#if SPRING_BOOT_3
 import jakarta.activation.DataHandler;
+#else
+import javax.activation.DataHandler;
+#endif
 import lombok.experimental.UtilityClass;
 
 @UtilityClass

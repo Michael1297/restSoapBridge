@@ -6,7 +6,11 @@ import io.github.connellite.model.MappingDefinition;
 import io.github.connellite.model.MappingRegistry;
 import io.github.connellite.service.BridgeService;
 import io.swagger.v3.oas.annotations.Hidden;
+#if SPRING_BOOT_3
 import jakarta.servlet.http.HttpServletRequest;
+#else
+import javax.servlet.http.HttpServletRequest;
+#endif
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

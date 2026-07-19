@@ -3,7 +3,6 @@ package io.github.connellite.exception;
 import lombok.Getter;
 import org.apache.cxf.binding.soap.SoapFault;
 import org.springframework.core.NestedExceptionUtils;
-import org.springframework.http.HttpStatusCode;
 
 @Getter
 public class SoapFaultException extends RuntimeException {
@@ -17,10 +16,6 @@ public class SoapFaultException extends RuntimeException {
         this.faultName = faultName;
         this.httpStatus = httpStatus;
         this.faultCode = faultCode;
-    }
-
-    public HttpStatusCode httpStatusCode() {
-        return HttpStatusCode.valueOf(httpStatus);
     }
 
     public static SoapFaultException from(Throwable throwable) {

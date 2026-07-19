@@ -3,7 +3,11 @@ package io.github.connellite.mapper.path;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
+#if SPRING_BOOT_3
 import jakarta.activation.DataHandler;
+#else
+import javax.activation.DataHandler;
+#endif
 
 import java.io.IOException;
 

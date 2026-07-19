@@ -3,8 +3,13 @@ package io.github.connellite.mapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.connellite.mapper.path.SoapArgument;
+#if SPRING_BOOT_3
 import jakarta.activation.DataHandler;
 import jakarta.activation.DataSource;
+#else
+import javax.activation.DataHandler;
+import javax.activation.DataSource;
+#endif
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;

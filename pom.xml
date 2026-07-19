@@ -4,16 +4,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.4</version>
-        <relativePath/>
-    </parent>
-
     <groupId>io.github.connellite</groupId>
     <artifactId>restSoapBridge</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>restSoapBridge</name>
+    <description>REST facade over SOAP services</description>
 
     <licenses>
         <license>
@@ -24,31 +20,49 @@
     </licenses>
 
     <properties>
-        <java.version>17</java.version>
-        <cxf.version>4.1.1</cxf.version>
-        <lombok.version>1.18.42</lombok.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
         <maven-war-plugin.version>3.4.0</maven-war-plugin.version>
-        <springdoc.version>2.8.6</springdoc.version>
+        <lombok.version>1.18.42</lombok.version>
+        <manifold.version>2026.1.6</manifold.version>
+        <manifold.spring.symbol>SPRING_BOOT_2</manifold.spring.symbol>
+        <spring.boot.compat.version>2.7.18</spring.boot.compat.version>
+        <cxf.version>3.5.11</cxf.version>
+        <jaxb.version>2.3.9</jaxb.version>
+        <springdoc.version>1.7.0</springdoc.version>
+        <springdoc.artifact>springdoc-openapi-ui</springdoc.artifact>
+        <problem-spring-web.version>0.27.0</problem-spring-web.version>
+        <jsoup.version>1.19.1</jsoup.version>
+        <wsdl4j.version>1.6.3</wsdl4j.version>
+        <xmlschema.version>2.3.1</xmlschema.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>${springdoc.version}</version>
+            <version>${spring.boot.compat.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+            <version>${spring.boot.compat.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>${springdoc.artifact}</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.zalando</groupId>
+            <artifactId>problem-spring-web-starter</artifactId>
+            <version>${problem-spring-web.version}</version>
         </dependency>
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
-            <version>2.9.0</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -74,54 +88,77 @@
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-xjc</artifactId>
-            <version>4.0.5</version>
+            <version>${jaxb.version}</version>
         </dependency>
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
-            <version>4.0.5</version>
+            <version>${jaxb.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
-            <version>1.19.1</version>
+            <version>${jsoup.version}</version>
         </dependency>
         <dependency>
             <groupId>wsdl4j</groupId>
             <artifactId>wsdl4j</artifactId>
-            <version>1.6.3</version>
+            <version>${wsdl4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.ws.xmlschema</groupId>
             <artifactId>xmlschema-core</artifactId>
-            <version>2.3.1</version>
+            <version>${xmlschema.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <version>${spring.boot.compat.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
+        <finalName>${project.artifactId}-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven.compiler.plugin.version}</version>
                 <configuration>
+                    <source>17</source>
+                    <target>17</target>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
                         </path>
+                        <path>
+                            <groupId>systems.manifold</groupId>
+                            <artifactId>manifold-preprocessor</artifactId>
+                            <version>${manifold.version}</version>
+                        </path>
                     </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-Xplugin:Manifold</arg>
+                        <arg>-A${manifold.spring.symbol}</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring.boot.compat.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
                 <configuration>
+                    <mainClass>io.github.connellite.RestSoapBridgeApplication</mainClass>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
@@ -147,8 +184,72 @@
                         WEB-INF/lib/tomcat-embed-*.jar
                     </packagingExcludes>
                     <attachClasses>false</attachClasses>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>spring-2</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <manifold.spring.symbol>SPRING_BOOT_2</manifold.spring.symbol>
+                <spring.boot.compat.version>2.7.18</spring.boot.compat.version>
+                <cxf.version>3.5.11</cxf.version>
+                <jaxb.version>2.3.9</jaxb.version>
+                <springdoc.version>1.7.0</springdoc.version>
+                <springdoc.artifact>springdoc-openapi-ui</springdoc.artifact>
+                <problem-spring-web.version>0.27.0</problem-spring-web.version>
+            </properties>
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-dependencies</artifactId>
+                        <version>${spring.boot.compat.version}</version>
+                        <type>pom</type>
+                        <scope>import</scope>
+                    </dependency>
+                </dependencies>
+            </dependencyManagement>
+        </profile>
+
+        <profile>
+            <id>spring-3</id>
+            <properties>
+                <manifold.spring.symbol>SPRING_BOOT_3</manifold.spring.symbol>
+                <spring.boot.compat.version>3.4.4</spring.boot.compat.version>
+                <cxf.version>4.1.1</cxf.version>
+                <jaxb.version>4.0.5</jaxb.version>
+                <springdoc.version>2.8.6</springdoc.version>
+                <springdoc.artifact>springdoc-openapi-starter-webmvc-ui</springdoc.artifact>
+                <problem-spring-web.version>0.29.1</problem-spring-web.version>
+            </properties>
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-dependencies</artifactId>
+                        <version>${spring.boot.compat.version}</version>
+                        <type>pom</type>
+                        <scope>import</scope>
+                    </dependency>
+                </dependencies>
+            </dependencyManagement>
+            <build>
+                <finalName>${project.artifactId}-${project.version}-spring-3</finalName>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <version>${spring.boot.compat.version}</version>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
